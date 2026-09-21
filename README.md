@@ -5,6 +5,7 @@ The New AI Paradigm in Software Development:
 Space AI is a new tailor-software development paradigm. It replaces text prompting with a visual artboard and stealth, hover-activated AI Chopper Micro-Agents.
 
 📄 Metadata & Project Initialization
+
 • Repository Registry: `GitHub.com/LiborBenes-US`
 
 • Principal Concept Architect of the New AI Paradigm for Software Development: Dr. Libor Benes, M.A.
