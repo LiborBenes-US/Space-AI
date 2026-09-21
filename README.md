@@ -11,7 +11,9 @@ Space AI is a new tailor-software development paradigm. It replaces text prompti
 • Support E-mail: Benes@iwp.edu
 • This README.md is submitted to GitHub.com/LiborBenes-US by Dr. Libor Benes, M.A., on Monday, September 21, 2026.
 
-Figure 1: Space AI Workspace Architecture – Technical Interface Specification and Static Visualization. Model: OpenAI ChatGPT (GPT-5.6 Image Generation Pipeline), based on a concept and system prompt by Dr. Libor Benes, M.A., formulated by Google AI.
+Figure 1: Space AI Workspace Architecture – Technical Interface Specification and Static Visualization.
+https://github.com/LiborBenes-US/Space-AI/commit/5a7f4a8033640e7fa01cd34f0c8b5fe4b8b06e0a
+Model: OpenAI ChatGPT (GPT-5.6 Image Generation Pipeline), based on a concept and system prompt by Dr. Libor Benes, M.A., formulated by Google AI.
 
 📋 Background: The Hijacked Democratization
 Software development has evolved in distinct syntax-heavy waves. We moved from raw binary to assembly, and eventually to structured abstractions like C. However, in 1991, a quiet revolution occurred: the launch of Visual Basic.
