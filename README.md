@@ -54,6 +54,7 @@ The fundamental goal is to allow anyone to create securely permissioned, product
 
 Space AI operates as a unified, context-aware web system divided into three tightly integrated layers:
 
+
 [ Visual Artboard (Figma/Visual Basic-like Interface) ]
                  │
                  ▼
