@@ -12,7 +12,9 @@ Space AI is a new tailor-software development paradigm. It replaces text prompti
 • This README.md is submitted to GitHub.com/LiborBenes-US by Dr. Libor Benes, M.A., on Monday, September 21, 2026.
 
 ![Space AI Workspace Architecture][blueprint]
+<br>
 Figure 1: Space AI Workspace Architecture – Technical Interface Specification and Static Visualization.
+<br>
 Model: OpenAI ChatGPT (GPT-5.6 Image Generation Pipeline), based on a concept and system prompt by Dr. Libor Benes, M.A., formulated by Google AI.
 
 📋 Background: The Hijacked Democratization
