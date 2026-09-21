@@ -35,11 +35,14 @@ In the center sits our application prototype: a clean, emerald-green Submit Data
 
 3. The Stealth AI Chopper Micro-Agent (The Core Innovation)
 This is the breakthrough. Notice the mouse cursor hovering directly over the "Submit Data" button. The moment the user's cursor touches that boundary, the AI Chopper Micro-Agent instantly materializes directly above the object with a glowing cyber-cyan neon border.
+
 • No Chat Boxes: The agent is completely stealth. It stays hidden until your spatial intent summons it.
+
 • Frictionless Selection: Inside the bubble, the agent presents a highly targeted, immediately selectable menu: Color, Corners, and Size.
+
 • The Intent Bridge: If you want a quick visual tweak, you click the item directly. If you want a custom behavior, you type a micro-phrase directly into the "Ask Micro-Agent..." input line. The agent is locked strictly to this single button, meaning it executes changes with 100% precision and zero AI hallucinations.
 
-4. The Properties & Style Panel (Right Sidebar)
+5. The Properties & Style Panel (Right Sidebar)
 On the far right sits the fine-tuning console. When the Chopper Agent flies in, it exposes the raw technical dimensions to the right sidebar. Here, the user can manually slide a dial to adjust the Radius (set to 12px), change the hexadecimal Color (#00E5FF), or track the exact pixel coordinates (Width: 160, Height: 48).
 
 At the very bottom sits the master toggle: Enable AI Agent, with the Agent Type securely designated as the AI Chopper Agent.
@@ -50,7 +53,6 @@ This visualization proves that we can bypass the complex syntax era entirely. Th
 
 Space AI returns software creation to a fluid, visual experience. You map the vision on the artboard; the stealth chopper agents engineer the code.
 
-[blueprint]: https://github.com/LiborBenes-US/Space-AIcommit/5a7f4a8033640e7fa01cd34f0c8b5fe4b8b06e0a
 📦 Code & Architecture Specifications
 
 The blueprint is fully open-source. Explore the technical repository, view the full-resolution layout specs, or join the discussion to build the prototype on GitHub: github.com
@@ -58,3 +60,5 @@ The blueprint is fully open-source. Explore the technical repository, view the f
 Formulated in conversation with Google AI, September 21, 2026.
 
 AI-generated interface mockup generated with OpenAI ChatGPT (GPT-5.6 image generation), based on a prompt and concept by Libor Benes, formulated by Google AI.
+
+[blueprint]: https://github.com/LiborBenes-US/Space-AIcommit/5a7f4a8033640e7fa01cd34f0c8b5fe4b8b06e0a
