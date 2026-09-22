@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Space AI — Design Agent</title>
+<style>
+    :root {
+        --bg:      #0E1117;
+        --panel:   #161B22;
+        --surface: #21262D;
+        --border:  #30363D;
+        --text:    #e2e8f0;
+        --muted:   #8b949e;
+        --dim:     #5c6370;
+        --accent:  #06B6D4;
+        --accent2: #10B981;
+        --accent3: #58A6FF;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: system-ui, -apple-system, sans-serif;
+        display: flex;
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden;
+        user-select: none;
+    }
+
+    /* ── LEFT SIDEBAR ─────────────────────────────── */
+    .left-sidebar {
+        width: 200px;
+        background: var(--panel);
+        border-right: 1px solid var(--border);
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        flex-shrink: 0;
+    }
+    .sidebar-title {
+        color: var(--accent3);
+        font-weight: 600;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin: 0;
+    }
+    .component-item {
+        padding: 10px 12px;
+        background: var(--surface);
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        font-size: 13px;
+        color: #c9d1d9;
+    }
+    .component-item.active {
+        border-color: var(--accent2);
+        color: #fff;
+        font-weight: 500;
+    }
+
+    /* ── CANVAS ───────────────────────────────────── */
+    .canvas-area {
+        flex: 1;
+        position: relative;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: 32px 32px 80px 32px;
+    }
+    .coordinates {
+        position: absolute;
+        top: 10px;
+        left: 16px;
+        font-size: 11px;
+        color: var(--muted);
+        font-family: ui-monospace, monospace;
+    }
+    .interaction-group {
+        position: relative;
+        padding: 16px 32px;
+    }
+    .interaction-group::after {
+        content: '';
+        position: absolute;
+        left: 0; right: 0; top: -24px; height: 24px;
+    }
+
+    /* ── TARGET BUTTON ────────────────────────────── */
+    #target-button {
+        border: none;
+        color: white;
+        padding: 14px 28px;
+        font-weight: 700;
+        cursor: pointer;
+        font-size: 16px;
+        font-family: inherit;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        background: #10B981;
+        border-radius: 12px;
+        position: relative;
+        overflow: hidden;
+        transition:
+            border-radius 220ms cubic-bezier(.2,.8,.2,1),
+            background 220ms ease,
+            transform 140ms ease,
+            box-shadow 220ms ease,
+            padding 220ms ease,
+            font-size 220ms ease,
+            letter-spacing 220ms ease,
+            border-color 220ms ease;
+    }
+    #target-button:active { transform: scale(0.97); }
+
+    /* stripes overlay */
+    #target-button.stripes::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background-image: repeating-linear-gradient(
+            45deg,
+            rgba(255,255,255,0.18) 0 8px,
+            transparent 8px 18px
+        );
+        pointer-events: none;
+    }
+
+    /* 3d press */
+    #target-button.three-d {
+        transform: translateY(-2px);
+    }
+    #target-button.three-d:active {
+        transform: translateY(4px);
+    }
+
+    /* alive — hue cycling + breathing */
+    @keyframes alive-hue {
+        0%   { filter: hue-rotate(0deg); }
+        100% { filter: hue-rotate(360deg); }
+    }
+    @keyframes alive-breathe {
+        0%, 100% { opacity: 1; }
+        50%      { opacity: 0.82; }
+    }
+    #target-button.alive {
+        animation:
+            alive-hue 8s linear infinite,
+            alive-breathe 4s ease-in-out infinite;
+    }
+
+    /* hover effects */
+    #target-button.hover-raise {
+        transition: transform 180ms ease, box-shadow 180ms ease;
+    }
+    #target-button.hover-raise:hover {
+        transform: translateY(-4px);
+    }
+    #target-button.hover-grow {
+        transition: transform 180ms ease;
+    }
+    #target-button.hover-grow:hover {
+        transform: scale(1.06);
+    }
+    #target-button.hover-glow:hover {
+        box-shadow: 0 0 40px currentColor, 0 0 80px currentColor;
+    }
+
+    /* ── AGENT PANEL ──────────────────────────────── */
+    .agent-bubble {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%) translateY(10px);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 180ms ease, transform 180ms ease, visibility 180ms;
+        margin-bottom: 14px;
+        width: 520px;
+
+        /* ── KEY CHANGE ── */
+        max-height: calc(100vh - 200px);   /* always leaves room for the button + margins */
+        overflow-y: auto;                   /* scroll inside the panel if needed */
+        overscroll-behavior: contain;       /* don't scroll the page when hitting the end */
+
+        background: var(--surface);
+        border: 1px solid var(--accent);
+        border-radius: 14px;
+        padding: 16px;
+        z-index: 999;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 24px rgba(6,182,212,0.15);
+    }
+    .agent-bubble::-webkit-scrollbar { width: 6px; }
+    .agent-bubble::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 3px;
+    }
+    .interaction-group:hover .agent-bubble,
+    .agent-bubble:hover {
+        opacity: 1;
+        visibility: visible;
+        transform: translateX(-50%) translateY(0);
+    }
+    .agent-bubble.thinking {
+        border-style: dashed;
+        border-color: var(--accent2);
+    }
+
+    .agent-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 10px;
+        margin-bottom: 12px;
+    }
+    .agent-name {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--accent);
+        letter-spacing: 0.06em;
+    }
+    .agent-status {
+        font-size: 10px;
+        color: var(--accent2);
+        background: rgba(16,185,129,0.12);
+        padding: 2px 7px;
+        border-radius: 4px;
+        font-family: ui-monospace, monospace;
+        font-weight: 600;
+    }
+    .agent-bubble.thinking .agent-name { color: var(--accent2); }
+
+    /* ── OPTION ROWS ──────────────────────────────── */
+    .opt-row { margin-bottom: 12px; }
+    .opt-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+        margin-bottom: 6px;
+    }
+    .opt-hint {
+        font-family: ui-monospace, monospace;
+        color: var(--dim);
+        font-size: 10px;
+        text-transform: none;
+        letter-spacing: 0;
+        font-weight: 400;
+    }
+    .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .chip {
+        font-size: 11px;
+        padding: 5px 10px;
+        border-radius: 6px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        color: #c9d1d9;
+        cursor: pointer;
+        font-family: inherit;
+        transition: all 120ms ease;
+        line-height: 1.3;
+    }
+    .chip:hover {
+        border-color: var(--accent);
+        color: #fff;
+        transform: translateY(-1px);
+    }
+    .chip.active {
+        border-color: var(--accent2);
+        background: rgba(16,185,129,0.12);
+        color: #fff;
+    }
+    .chip.swatch-chip {
+        width: 26px;
+        height: 26px;
+        padding: 0;
+        border-radius: 50%;
+        border: 2px solid var(--border);
+    }
+    .chip.swatch-chip:hover { border-color: #fff; transform: scale(1.1); }
+    .chip.swatch-chip.active { border-color: #fff; transform: scale(1.15); }
+    .chip.icon-chip {
+        font-size: 16px;
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* ── PROMPT BAR + COPY ────────────────────────── */
+    .prompt-row {
+        display: flex;
+        gap: 6px;
+        margin-top: 4px;
+    }
+    .prompt-input {
+        flex: 1;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 9px 12px;
+        font-size: 12px;
+        color: #fff;
+        outline: none;
+        font-family: ui-monospace, monospace;
+        transition: border-color 150ms ease;
+    }
+    .prompt-input:focus { border-color: var(--accent); }
+    .prompt-input::placeholder { color: var(--dim); }
+    .btn-copy {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: #c9d1d9;
+        font-size: 11px;
+        padding: 0 12px;
+        cursor: pointer;
+        font-family: inherit;
+        transition: all 120ms ease;
+        white-space: nowrap;
+    }
+    .btn-copy:hover {
+        border-color: var(--accent2);
+        color: #fff;
+    }
+    .btn-copy.copied {
+        border-color: var(--accent2);
+        color: var(--accent2);
+    }
+
+    /* ── RIGHT SIDEBAR ────────────────────────────── */
+    .right-sidebar {
+        width: 260px;
+        background: var(--panel);
+        border-left: 1px solid var(--border);
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+        flex-shrink: 0;
+        overflow-y: auto;
+    }
+    .right-sidebar::-webkit-scrollbar { width: 6px; }
+    .right-sidebar::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 3px;
+    }
+    .data-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        background: var(--bg);
+        padding: 12px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+    }
+    .panel-title {
+        color: var(--muted);
+        font-size: 10px;
+        text-transform: uppercase;
+        font-family: system-ui, sans-serif;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+    }
+    .data-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+    }
+    .data-label { color: var(--dim); }
+    .data-val {
+        font-weight: 700;
+        color: #c9d1d9;
+        text-align: right;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 150px;
+    }
+    .data-val.accent { color: var(--accent); }
+    .data-val.green  { color: var(--accent2); }
+
+    .log-line {
+        font-size: 10px;
+        color: var(--dim);
+        padding: 3px 0;
+        border-bottom: 1px dashed rgba(48,54,61,0.5);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .log-line .k { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ LEFT SIDEBAR ═══════════════ -->
+<div class="left-sidebar">
+    <h3 class="sidebar-title">Artboard</h3>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+        <div class="component-item active">⣿  Buttons</div>
+        <div class="component-item">⣿  Text Input</div>
+        <div class="component-item">⣿  Dropdowns</div>
+        <div class="component-item">⣿  Containers</div>
+    </div>
+</div>
+
+<!-- ═══════════════ CANVAS ═══════════════ -->
+<div class="canvas-area">
+    <div class="coordinates">X: 420 | Y: 360</div>
+
+    <div class="interaction-group">
+        <button id="target-button">
+            <span id="btn-icon">📊</span>
+            <span id="btn-label">Submit Data</span>
+        </button>
+
+        <!-- ═══════════════ AGENT PANEL ═══════════════ -->
+        <div class="agent-bubble" id="agent-panel">
+            <div class="agent-header">
+                <span class="agent-name" id="agent-label">🤖 DESIGN AGENT</span>
+                <span class="agent-status" id="agent-status">READY</span>
+            </div>
+
+            <!-- COLOR -->
+            <div class="opt-row">
+                <div class="opt-label">
+                    Color
+                    <span class="opt-hint">"red" · "neon pink" · "darker"</span>
+                </div>
+                <div class="chip-row" id="row-color"></div>
+            </div>
+
+            <!-- SHAPE -->
+            <div class="opt-row">
+                <div class="opt-label">
+                    Shape
+                    <span class="opt-hint">"pill" · "square" · "circle"</span>
+                </div>
+                <div class="chip-row" id="row-shape"></div>
+            </div>
+
+            <!-- SIZE -->
+            <div class="opt-row">
+                <div class="opt-label">
+                    Size
+                    <span class="opt-hint">"large" · "small" · "tall"</span>
+                </div>
+                <div class="chip-row" id="row-size"></div>
+            </div>
+
+            <!-- SHADE -->
+            <div class="opt-row">
+                <div class="opt-label">
+                    Shade (light/dark ramp)
+                    <span class="opt-hint">"shade right" · "shade up"</span>
+                </div>
+                <div class="chip-row" id="row-shade"></div>
+            </div>
+
+            <!-- THEME -->
+            <div class="opt-row">
+                <div class="opt-label">
+                    Theme (named palette)
+                    <span class="opt-hint">"neon" · "sunset" · "ocean"</span>
+                </div>
+                <div class="chip-row" id="row-theme"></div>
+            </div>
+
+            <!-- EFFECTS -->
+            <div class="opt-row">
+                <div class="opt-label">
+                    Effects
+                    <span class="opt-hint">"glow" · "glass" · "3d" · "alive"</span>
+                </div>
+                <div class="chip-row" id="row-effects"></div>
+            </div>
+
+            <!-- TEXT -->
+            <div class="opt-row">
+                <div class="opt-label">
+                    Text
+                    <span class="opt-hint">"bold" · "uppercase" · "spaced"</span>
+                </div>
+                <div class="chip-row" id="row-text"></div>
+            </div>
+
+            <!-- HOVER -->
+            <div class="opt-row">
+                <div class="opt-label">
+                    Hover
+                    <span class="opt-hint">"hover raise" · "hover grow"</span>
+                </div>
+                <div class="chip-row" id="row-hover"></div>
+            </div>
+
+            <!-- ICON -->
+            <div class="opt-row">
+                <div class="opt-label">
+                    Icon
+                    <span class="opt-hint">click to swap</span>
+                </div>
+                <div class="chip-row" id="row-icon"></div>
+            </div>
+
+            <!-- RESET + PROMPT -->
+            <div class="opt-row" style="margin-bottom:8px;">
+                <div class="chip-row">
+                    <button class="chip" id="btn-reset">↺ Reset all</button>
+                </div>
+            </div>
+
+            <div class="prompt-row">
+                <input type="text" class="prompt-input" id="cmd-bar"
+                       placeholder='Try: "pill neon alive with glass and bold text"'>
+                <button class="btn-copy" id="btn-copy" title="Copy CSS">⧉ CSS</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════ RIGHT SIDEBAR ═══════════════ -->
+<div class="right-sidebar">
+    <h3 class="sidebar-title" style="font-family:system-ui,sans-serif;">Properties</h3>
+    <div class="data-panel">
+        <div class="panel-title">Selected Element</div>
+        <div class="data-row"><span class="data-label">Component:</span><span class="data-val green">Primary Button</span></div>
+        <div class="data-row"><span class="data-label">Label:</span><span class="data-val" id="s-label">Submit Data</span></div>
+        <div class="data-row"><span class="data-label">Radius:</span><span class="data-val accent" id="s-radius">12px</span></div>
+        <div class="data-row"><span class="data-label">Fill:</span><span class="data-val" id="s-color">#10B981</span></div>
+        <div class="data-row"><span class="data-label">Size:</span><span class="data-val" id="s-size">md</span></div>
+        <div class="data-row"><span class="data-label">Shape:</span><span class="data-val" id="s-shape">rounded</span></div>
+        <div class="data-row"><span class="data-label">Effects:</span><span class="data-val" id="s-effects">—</span></div>
+        <div class="data-row"><span class="data-label">Text:</span><span class="data-val" id="s-text">—</span></div>
+        <div class="data-row"><span class="data-label">Hover:</span><span class="data-val" id="s-hover">—</span></div>
+    </div>
+
+    <h3 class="sidebar-title" style="font-family:system-ui,sans-serif;">Command Log</h3>
+    <div class="data-panel" id="log" style="max-height:220px;overflow-y:auto;">
+        <div class="log-line" style="color:var(--accent2);">▸ agent initialized</div>
+    </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   DESIGN AGENT — final
+   ─────────────────────────────────────────────────────────────
+   State token shape (the LLM contract):
+   {
+     color, radius, size, shape,
+     effects:  { glow?, shadow?, stripes?, glass?, outline?,
+                 '3d'?, alive?, shade?, theme? },
+     shadeDir: 'right' | 'left' | 'down' | 'up' | 'diagonal',
+     theme:    'sunset' | 'ocean' | 'neon' | ...,
+     text:     { bold?, bolder?, italic?, uppercase?, spaced?, mono? },
+     hover:    'raise' | 'grow' | 'glow' | null,
+     icon, label
+   }
+   To swap in an LLM later, replace parseIntent(text) with await callLLM(text).
+   The LLM MUST return the same shape.
+   ═══════════════════════════════════════════════════════════════ */
+
+const DEFAULT_STATE = {
+    color:  '#10B981',
+    radius: 12,
+    size:   'md',
+    shape:  'rounded',
+    effects: {},
+    shadeDir: 'right',
+    theme:    null,
+    text:   {},
+    hover:  null,
+    icon:   '📊',
+    label:  'Submit Data'
+};
+
+let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+
+/* ── DICTIONARIES ───────────────────────────────── */
+const COLORS = {
+    red:'#EF4444', crimson:'#DC2626', orange:'#F97316', amber:'#F59E0B',
+    yellow:'#EAB308', lime:'#84CC16', green:'#10B981', emerald:'#059669',
+    teal:'#14B8A6', cyan:'#06B6D4', sky:'#0EA5E9', blue:'#3B82F6',
+    indigo:'#6366F1', violet:'#8B5CF6', purple:'#A855F7', fuchsia:'#D946EF',
+    pink:'#EC4899', rose:'#F43F5E', white:'#FFFFFF', black:'#000000',
+    grey:'#6B7280', slate:'#475569', dark:'#30363D'
+};
+
+const COLOR_SYNONYMS = {
+    'neon green':'green', 'neon pink':'pink', 'neon blue':'blue',
+    'light blue':'sky', 'dark blue':'indigo', 'dark green':'emerald',
+    'hot pink':'rose', 'charcoal':'dark'
+};
+
+const THEMES = {
+    sunset:   ['#F97316','#EC4899'],
+    ocean:    ['#06B6D4','#3B82F6'],
+    forest:   ['#10B981','#84CC16'],
+    purple:   ['#A855F7','#6366F1'],
+    fire:     ['#EF4444','#F59E0B'],
+    ice:      ['#E0F2FE','#06B6D4'],
+    midnight: ['#1E293B','#0F172A'],
+    neon:     ['#10B981','#06B6D4','#A855F7'],
+    candy:    ['#EC4899','#F59E0B','#10B981'],
+    cyber:    ['#06B6D4','#A855F7','#EF4444']
+};
+
+const SHAPE_MAP = {
+    square: ['square','sharp','box','rectangular','rectangle'],
+    rounded:['rounded','round','soft'],
+    pill:   ['pill','stadium'],
+    circle: ['circle','circular']
+};
+
+const SIZE_MAP = {
+    sm:['small','tiny','compact','little'],
+    md:['medium','normal','default'],
+    lg:['large','big','wide','chunky'],
+    xl:['extra large','huge','giant','xl','massive']
+};
+
+const SHADE_DIRS = {
+    right:    ['shade right','shade rightward','left to right','shade'],
+    left:     ['shade left','shade leftward','right to left'],
+    down:     ['shade down','shade downward','top to bottom','vertical'],
+    up:       ['shade up','shade upward','bottom to top'],
+    diagonal: ['shade diagonal','diagonal shade','angled shade']
+};
+
+const ICONS = ['📊','🚀','✓','⚡','★','♥','⚙','🔔','🔥','💎','✨','🎯','➕','▶','☰'];
+
+/* ── PARSER ─────────────────────────────────────── */
+function parseIntent(cmd) {
+    const t = ' ' + cmd.toLowerCase() + ' ';
+    const out = {};
+
+    /* COLOR */
+    let colorSet = false;
+    for (const [name, hex] of Object.entries(COLORS)) {
+        if (t.includes(' ' + name)) { out.color = hex; colorSet = true; break; }
+    }
+    for (const [phrase, target] of Object.entries(COLOR_SYNONYMS)) {
+        if (t.includes(phrase)) { out.color = COLORS[target]; colorSet = true; }
+    }
+    const hexMatch = t.match(/#([0-9a-f]{6}|[0-9a-f]{3})\b/i);
+    if (hexMatch) { out.color = hexMatch[0].toUpperCase(); colorSet = true; }
+
+    if (colorSet) {
+        if (t.includes('darker'))  out.color = shade(out.color, -0.25);
+        if (t.includes('lighter')) out.color = shade(out.color,  0.25);
+    } else {
+        if (t.includes('darker'))  out.color = shade(state.color, -0.25);
+        if (t.includes('lighter')) out.color = shade(state.color,  0.25);
+    }
+
+    /* SHAPE */
+    for (const [shape, words] of Object.entries(SHAPE_MAP)) {
+        if (words.some(w => t.includes(w))) { out.shape = shape; break; }
+    }
+
+    /* SIZE */
+    for (const [size, words] of Object.entries(SIZE_MAP)) {
+        if (words.some(w => t.includes(w))) { out.size = size; break; }
+    }
+    if (t.includes('taller') || t.includes('tall'))   out.tall = true;
+    if (t.includes('shorter') || t.includes('short')) out.short = true;
+
+    /* SHADE DIRECTION */
+    for (const [dir, words] of Object.entries(SHADE_DIRS)) {
+        if (words.some(w => t.includes(w))) { out.shadeDir = dir; break; }
+    }
+
+    /* EFFECTS */
+    const fx = {};
+    if (t.includes('glow'))    fx.glow = true;
+    if (t.includes('shadow') || t.includes('elevated')) fx.shadow = true;
+    if (t.includes('stripe') || t.includes('diagonal line')) fx.stripes = true;
+    if (t.includes('glass') || t.includes('translucent')) fx.glass = true;
+    if (t.includes('outline')) fx.outline = true;
+    if (t.includes('3d') || t.includes('three d') || t.includes('depth') || t.includes('pressed')) fx['3D'] = true;
+    if (t.includes('alive') || t.includes('animate') || t.includes('cycle') || t.includes('breath') || t.includes('shimmer')) fx.alive = true;
+
+    // shade — only if not already matching a direction (that implies shade on)
+    const dirMatched = out.shadeDir !== undefined;
+    if (dirMatched || t.includes('shade') || t.includes('ramp') || t.includes('fade')) {
+        fx.shade = true;
+        if (!out.shadeDir) out.shadeDir = 'right';
+    }
+
+    // theme
+    let themeMatched = null;
+    for (const name of Object.keys(THEMES)) {
+        if (t.includes(name)) { themeMatched = name; break; }
+    }
+    if (themeMatched) {
+        fx.theme = true;
+        out.theme = themeMatched;
+    }
+    if (t.includes('no theme')) { fx.theme = false; out.theme = null; }
+
+    // "no X" off switches
+    if (t.includes('no glow'))   fx.glow = false;
+    if (t.includes('no shadow')) fx.shadow = false;
+    if (t.includes('no stripes')) fx.stripes = false;
+    if (t.includes('no glass'))  fx.glass = false;
+    if (t.includes('no outline')) fx.outline = false;
+    if (t.includes('no 3D'))     fx['3D'] = false;
+    if (t.includes('no alive') || t.includes('stop')) fx.alive = false;
+    if (t.includes('no shade') || t.includes('flat')) {
+        fx.shade = false;
+        out.shadeDir = null;
+    }
+
+    if (Object.keys(fx).length) out.effects = fx;
+
+    /* TEXT */
+    const tx = {};
+    if (t.includes('bolder'))    tx.bolder = true;
+    if (t.includes('bold'))      tx.bold = true;
+    if (t.includes('italic'))    tx.italic = true;
+    if (t.includes('uppercase') || t.includes('caps')) tx.uppercase = true;
+    if (t.includes('spaced') || t.includes('letter'))  tx.spaced = true;
+    if (t.includes('mono'))      tx.mono = true;
+    if (Object.keys(tx).length) out.text = tx;
+
+    /* HOVER */
+    if (t.includes('hover raise') || t.includes('hover lift') || t.includes('lift on hover')) {
+        out.hover = 'raise';
+    } else if (t.includes('hover grow') || t.includes('hover scale') || t.includes('grow on hover')) {
+        out.hover = 'grow';
+    } else if (t.includes('hover glow') || t.includes('glow on hover')) {
+        out.hover = 'glow';
+    } else if (t.includes('no hover') || t.includes('plain hover')) {
+        out.hover = null;
+    }
+
+    /* RENAME */
+    const renameMatch = cmd.match(/rename\s+to\s+["']?([^"']+?)["']?\s*$/i);
+    if (renameMatch) out.label = renameMatch[1].trim();
+
+    return out;
+}
+
+function shade(hex, pct) {
+    const n = parseInt(hex.replace('#',''), 16);
+    let r=(n>>16)&0xff, g=(n>>8)&0xff, b=n&0xff;
+    r=Math.max(0,Math.min(255,Math.round(r+r*pct)));
+    g=Math.max(0,Math.min(255,Math.round(g+g*pct)));
+    b=Math.max(0,Math.min(255,Math.round(b+b*pct)));
+    return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+}
+
+function hexA(hex, a) {
+    const n = parseInt(hex.replace('#',''), 16);
+    const r=(n>>16)&0xff, g=(n>>8)&0xff, b=n&0xff;
+    return `rgba(${r},${g},${b},${a})`;
+}
+
+/* ── APPLY ──────────────────────────────────────── */
+function applyPatch(patch) {
+    for (const k of Object.keys(patch)) {
+        if (k === 'effects' || k === 'text') {
+            state[k] = { ...state[k], ...patch[k] };
+        } else {
+            state[k] = patch[k];
+        }
+    }
+    render();
+}
+
+/* ── RENDER ─────────────────────────────────────── */
+function render() {
+    const btn   = document.getElementById('target-button');
+    const icon  = document.getElementById('btn-icon');
+    const label = document.getElementById('btn-label');
+    const fx    = state.effects;
+
+    /* reset volatile */
+    btn.style.backgroundColor = state.color;
+    btn.style.backgroundImage = 'none';
+    btn.style.borderRadius    = '';
+    btn.style.border          = 'none';
+    btn.style.boxShadow       = 'none';
+    btn.style.transform       = '';
+    btn.style.width           = '';
+    btn.style.height          = '';
+    btn.style.backdropFilter  = '';
+    btn.classList.remove(
+        'stripes','glassy','three-d','alive',
+        'hover-raise','hover-grow','hover-glow'
+    );
+
+    /* SIZE */
+    const sizes = {
+        sm:{ pad:'8px 16px',  fs:'13px' },
+        md:{ pad:'14px 28px', fs:'16px' },
+        lg:{ pad:'18px 40px', fs:'19px' },
+        xl:{ pad:'24px 56px', fs:'22px' }
+    };
+    const s = sizes[state.size] || sizes.md;
+    btn.style.padding  = s.pad;
+    btn.style.fontSize = s.fs;
+    if (state.tall)  btn.style.paddingTop = btn.style.paddingBottom = '28px';
+    if (state.short) btn.style.paddingTop = btn.style.paddingBottom = '6px';
+
+    /* SHAPE */
+    if (state.shape === 'circle') {
+        const dim = state.size==='sm'?56: state.size==='lg'?96: state.size==='xl'?120: 72;
+        btn.style.width  = dim + 'px';
+        btn.style.height = dim + 'px';
+        btn.style.padding = '0';
+        btn.style.borderRadius = '50%';
+    } else {
+        const r = state.shape==='square'?0 : state.shape==='pill'?999 : state.radius;
+        btn.style.borderRadius = r + 'px';
+    }
+
+    /* THEME — named palette gradient (applied first, overrides base) */
+    if (fx.theme && state.theme && THEMES[state.theme]) {
+        const stops = THEMES[state.theme];
+        btn.style.backgroundImage = `linear-gradient(135deg, ${stops.join(', ')})`;
+    }
+
+    /* SHADE — directional dark→light ramp of current color */
+    if (fx.shade && !fx.theme) {
+        const light = shade(state.color,  0.35);
+        const dark  = shade(state.color, -0.35);
+        const dirs = {
+            right:    'to right',
+            left:     'to left',
+            down:     'to bottom',
+            up:       'to top',
+            diagonal: '135deg'
+        };
+        const dir = dirs[state.shadeDir] || 'to right';
+        btn.style.backgroundImage = `linear-gradient(${dir}, ${dark}, ${light})`;
+    }
+
+    /* GLASS */
+    if (fx.glass) {
+        if (!fx.shade && !fx.theme) {
+            btn.style.backgroundColor = hexA(state.color, 0.22);
+        }
+        btn.style.backdropFilter = 'blur(10px) saturate(140%)';
+        btn.style.border = '1px solid ' + hexA('#FFFFFF', 0.25);
+    }
+
+    /* STRIPES */
+    if (fx.stripes) btn.classList.add('stripes');
+
+    /* 3D */
+    if (fx['3D']) {
+        const edge = shade(state.color, -0.55);
+        btn.classList.add('three-d');
+        btn.style.boxShadow = `0 6px 0 ${edge}, 0 8px 12px rgba(0,0,0,0.5)`;
+    }
+
+    /* SHADOW + GLOW (stack on top of 3D) */
+    const shadows = [];
+    if (fx.shadow) {
+        shadows.push('0 10px 25px rgba(0,0,0,0.85)');
+        shadows.push('0 4px 10px rgba(0,0,0,0.6)');
+        shadows.push('inset 0 1px 0 rgba(255,255,255,0.18)');
+    }
+    if (fx.glow) {
+        const g = fx.theme ? '#A855F7' : state.color;
+        shadows.push(`0 0 30px ${hexA(g, 0.85)}`);
+        shadows.push(`0 0 60px ${hexA(g, 0.4)}`);
+    }
+    if (shadows.length && !fx['3D']) btn.style.boxShadow = shadows.join(', ');
+    else if (shadows.length) btn.style.boxShadow = btn.style.boxShadow + ', ' + shadows.join(', ');
+
+    /* OUTLINE */
+    if (fx.outline && !fx.glass) {
+        btn.style.border = '2px solid ' + hexA('#FFFFFF', 0.7);
+    }
+
+    /* ALIVE */
+    if (fx.alive) btn.classList.add('alive');
+
+    /* TEXT */
+    const tx = state.text;
+    btn.style.fontWeight    = tx.bolder?'900': tx.bold?'700':'600';
+    btn.style.fontStyle     = tx.italic?'italic':'normal';
+    btn.style.textTransform = tx.uppercase?'uppercase':'none';
+    btn.style.letterSpacing = tx.spaced?'0.15em':'normal';
+    btn.style.fontFamily    = tx.mono?'ui-monospace, monospace':'inherit';
+
+    /* HOVER */
+    if (state.hover === 'raise') btn.classList.add('hover-raise');
+    if (state.hover === 'grow')  btn.classList.add('hover-grow');
+    if (state.hover === 'glow')  btn.classList.add('hover-glow');
+
+    /* CONTENT */
+    if (state.shape === 'circle' && state.size !== 'xl') {
+        label.style.display = 'none';
+    } else {
+        label.style.display = '';
+    }
+    icon.textContent  = state.icon;
+    label.textContent = state.label;
+
+    /* SIDEBAR */
+    document.getElementById('s-label').textContent  = state.label;
+    document.getElementById('s-radius').textContent = btn.style.borderRadius || (state.radius+'px');
+    document.getElementById('s-color').textContent  = state.color;
+    document.getElementById('s-size').textContent   = state.size;
+    document.getElementById('s-shape').textContent  = state.shape;
+    document.getElementById('s-effects').textContent =
+        Object.keys(state.effects).filter(k => state.effects[k]).join(', ') || '—';
+    document.getElementById('s-text').textContent =
+        Object.keys(state.text).filter(k => state.text[k]).join(', ') || '—';
+    document.getElementById('s-hover').textContent  = state.hover || '—';
+}
+
+/* ── UI BUILDERS ────────────────────────────────── */
+function buildColorChips() {
+    const row = document.getElementById('row-color');
+    const shown = ['red','orange','yellow','lime','green','teal','cyan','sky',
+                   'blue','indigo','violet','purple','pink','white','dark'];
+    shown.forEach(name => {
+        const el = document.createElement('button');
+        el.className = 'chip swatch-chip';
+        el.style.background = COLORS[name];
+        el.title = name;
+        el.dataset.color = name;
+        el.addEventListener('click', () => {
+            pushLog(`click: color → ${name}`);
+            applyPatch({ color: COLORS[name] });
+            updateChipStates();
+        });
+        row.appendChild(el);
+    });
+}
+
+function buildShapeChips() {
+    const row = document.getElementById('row-shape');
+    [['square','■'],['rounded','▢'],['pill','⬭'],['circle','●']].forEach(([name, glyph]) => {
+        const el = document.createElement('button');
+        el.className = 'chip';
+        el.textContent = `${glyph} ${name}`;
+        el.dataset.shape = name;
+        el.addEventListener('click', () => {
+            pushLog(`click: shape → ${name}`);
+            applyPatch({ shape: name });
+            updateChipStates();
+        });
+        row.appendChild(el);
+    });
+}
+
+function buildSizeChips() {
+    const row = document.getElementById('row-size');
+    ['sm','md','lg','xl'].forEach(name => {
+        const el = document.createElement('button');
+        el.className = 'chip';
+        el.textContent = name.toUpperCase();
+        el.dataset.size = name;
+        el.addEventListener('click', () => {
+            pushLog(`click: size → ${name}`);
+            applyPatch({ size: name, tall:false, short:false });
+            updateChipStates();
+        });
+        row.appendChild(el);
+    });
+    const t = document.createElement('button');
+    t.className='chip'; t.textContent='↕ taller';
+    t.addEventListener('click', () => { pushLog('click: taller'); applyPatch({tall:true,short:false}); });
+    row.appendChild(t);
+    const s = document.createElement('button');
+    s.className='chip'; s.textContent='↕ shorter';
+    s.addEventListener('click', () => { pushLog('click: shorter'); applyPatch({short:true,tall:false}); });
+    row.appendChild(s);
+}
+
+function buildShadeChips() {
+    const row = document.getElementById('row-shade');
+    const dirs = [['right','→'],['left','←'],['down','↓'],['up','↑'],['diagonal','⤡']];
+    dirs.forEach(([dir, glyph]) => {
+        const el = document.createElement('button');
+        el.className = 'chip';
+        el.textContent = `${glyph} ${dir}`;
+        el.dataset.shadeDir = dir;
+        el.addEventListener('click', () => {
+            const wasOn = !!state.effects.shade;
+            const isCurrent = state.shadeDir === dir;
+            if (wasOn && isCurrent) {
+                // toggle off
+                applyPatch({ effects: { shade: false } });
+                pushLog(`click: shade → off`);
+            } else {
+                applyPatch({ effects: { shade: true }, shadeDir: dir });
+                pushLog(`click: shade → ${dir}`);
+            }
+            updateChipStates();
+        });
+        row.appendChild(el);
+    });
+}
+
+function buildThemeChips() {
+    const row = document.getElementById('row-theme');
+    Object.keys(THEMES).forEach(name => {
+        const el = document.createElement('button');
+        el.className = 'chip';
+        el.textContent = name;
+        el.dataset.theme = name;
+        el.addEventListener('click', () => {
+            const isCurrent = state.effects.theme && state.theme === name;
+            if (isCurrent) {
+                applyPatch({ effects: { theme: false }, theme: null });
+                pushLog(`click: theme → off`);
+            } else {
+                applyPatch({ effects: { theme: true, shade: false }, theme: name });
+                pushLog(`click: theme → ${name}`);
+            }
+            updateChipStates();
+        });
+        row.appendChild(el);
+    });
+}
+
+function buildEffectChips() {
+    const row = document.getElementById('row-effects');
+    const effects = ['glow','shadow','stripes','glass','outline','3D','alive'];
+    effects.forEach(name => {
+        const el = document.createElement('button');
+        el.className = 'chip';
+        el.textContent = name;
+        el.dataset.effect = name;
+        el.addEventListener('click', () => {
+            const turningOn = !state.effects[name];
+            pushLog(`click: ${name} → ${turningOn ? 'on' : 'off'}`);
+            applyPatch({ effects: { [name]: turningOn } });
+            updateChipStates();
+        });
+        row.appendChild(el);
+    });
+}
+
+function buildTextChips() {
+    const row = document.getElementById('row-text');
+    ['bold','bolder','italic','uppercase','spaced','mono'].forEach(name => {
+        const el = document.createElement('button');
+        el.className = 'chip';
+        el.textContent = name;
+        el.dataset.text = name;
+        el.addEventListener('click', () => {
+            const turningOn = !state.text[name];
+            pushLog(`click: ${name} → ${turningOn ? 'on' : 'off'}`);
+            applyPatch({ text: { [name]: turningOn } });
+            updateChipStates();
+        });
+        row.appendChild(el);
+    });
+}
+
+function buildHoverChips() {
+    const row = document.getElementById('row-hover');
+    [['raise','↑ raise'],['grow','⤢ grow'],['glow','✦ glow']].forEach(([name, label]) => {
+        const el = document.createElement('button');
+        el.className = 'chip';
+        el.textContent = label;
+        el.dataset.hover = name;
+        el.addEventListener('click', () => {
+            const isCurrent = state.hover === name;
+            const next = isCurrent ? null : name;
+            pushLog(`click: hover → ${next || 'off'}`);
+            applyPatch({ hover: next });
+            updateChipStates();
+        });
+        row.appendChild(el);
+    });
+}
+
+function buildIconChips() {
+    const row = document.getElementById('row-icon');
+    ICONS.forEach(glyph => {
+        const el = document.createElement('button');
+        el.className = 'chip icon-chip';
+        el.textContent = glyph;
+        el.dataset.icon = glyph;
+        el.addEventListener('click', () => {
+            pushLog(`click: icon → ${glyph}`);
+            applyPatch({ icon: glyph });
+            updateChipStates();
+        });
+        row.appendChild(el);
+    });
+}
+
+function updateChipStates() {
+    document.querySelectorAll('.chip.swatch-chip').forEach(el => {
+        el.classList.toggle('active', COLORS[el.dataset.color] === state.color);
+    });
+    document.querySelectorAll('.chip[data-shape]').forEach(el =>
+        el.classList.toggle('active', el.dataset.shape === state.shape));
+    document.querySelectorAll('.chip[data-size]').forEach(el =>
+        el.classList.toggle('active', el.dataset.size === state.size));
+    document.querySelectorAll('.chip[data-shade-dir]').forEach(el =>
+        el.classList.toggle('active',
+            state.effects.shade && state.shadeDir === el.dataset.shadeDir));
+    document.querySelectorAll('.chip[data-theme]').forEach(el =>
+        el.classList.toggle('active',
+            state.effects.theme && state.theme === el.dataset.theme));
+    document.querySelectorAll('.chip[data-effect]').forEach(el =>
+        el.classList.toggle('active', !!state.effects[el.dataset.effect]));
+    document.querySelectorAll('.chip[data-text]').forEach(el =>
+        el.classList.toggle('active', !!state.text[el.dataset.text]));
+    document.querySelectorAll('.chip[data-hover]').forEach(el =>
+        el.classList.toggle('active', state.hover === el.dataset.hover));
+    document.querySelectorAll('.chip[data-icon]').forEach(el =>
+        el.classList.toggle('active', state.icon === el.dataset.icon));
+}
+
+/* ── PROMPT ─────────────────────────────────────── */
+const cmdBar = document.getElementById('cmd-bar');
+const panel  = document.getElementById('agent-panel');
+const agentLabel = document.getElementById('agent-label');
+const agentStatus = document.getElementById('agent-status');
+
+cmdBar.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || !cmdBar.value.trim()) return;
+    const text = cmdBar.value.trim();
+    pushLog(`> ${text}`);
+    panel.classList.add('thinking');
+    agentLabel.textContent = '🧠 COMPILING...';
+    agentStatus.textContent = 'THINKING';
+
+    setTimeout(() => {
+        // ── SWAP POINT: replace with await callLLM(text) ──
+        const patch = parseIntent(text);
+        applyPatch(patch);
+        updateChipStates();
+        cmdBar.value = '';
+        panel.classList.remove('thinking');
+        agentLabel.textContent = '🤖 DESIGN AGENT';
+        agentStatus.textContent = 'READY';
+    }, 420);
+});
+
+/* ── RESET + COPY + LOG ─────────────────────────── */
+document.getElementById('btn-reset').addEventListener('click', () => {
+    state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+    render();
+    updateChipStates();
+    pushLog('reset to defaults');
+});
+
+document.getElementById('btn-copy').addEventListener('click', () => {
+    const css = exportCSS();
+    navigator.clipboard.writeText(css).then(() => {
+        const b = document.getElementById('btn-copy');
+        b.textContent = '✓ Copied';
+        b.classList.add('copied');
+        pushLog('copied CSS to clipboard');
+        setTimeout(() => {
+            b.textContent = '⧉ CSS';
+            b.classList.remove('copied');
+        }, 1400);
+    }).catch(err => {
+        pushLog('copy failed: ' + err.message);
+    });
+});
+
+function exportCSS() {
+    const btn  = document.getElementById('target-button');
+    const fx   = state.effects;
+    const tx   = state.text;
+    const cs   = getComputedStyle(btn);
+
+    const lines = [];
+
+    // background
+    if (fx.theme && state.theme) {
+        const stops = THEMES[state.theme];
+        lines.push(`  background-image: linear-gradient(135deg, ${stops.join(', ')});`);
+        lines.push(`  background-color: ${state.color};`);
+    } else if (fx.shade) {
+        const light = shade(state.color,  0.35);
+        const dark  = shade(state.color, -0.35);
+        const dirs = { right:'to right', left:'to left', down:'to bottom', up:'to top', diagonal:'135deg' };
+        lines.push(`  background-image: linear-gradient(${dirs[state.shadeDir] || 'to right'}, ${dark}, ${light});`);
+        lines.push(`  background-color: ${state.color};`);
+    } else if (fx.glass) {
+        lines.push(`  background-color: ${hexA(state.color, 0.22)};`);
+        lines.push(`  backdrop-filter: blur(10px) saturate(140%);`);
+        lines.push(`  -webkit-backdrop-filter: blur(10px) saturate(140%);`);
+    } else {
+        lines.push(`  background-color: ${state.color};`);
+    }
+
+    // radius
+    lines.push(`  border-radius: ${cs.borderRadius};`);
+
+    // padding / size
+    lines.push(`  padding: ${cs.paddingTop} ${cs.paddingRight} ${cs.paddingBottom} ${cs.paddingLeft};`);
+    lines.push(`  font-size: ${cs.fontSize};`);
+
+    // text
+    lines.push(`  font-weight: ${cs.fontWeight};`);
+    if (tx.italic)    lines.push(`  font-style: italic;`);
+    if (tx.uppercase) lines.push(`  text-transform: uppercase;`);
+    if (tx.spaced)    lines.push(`  letter-spacing: 0.15em;`);
+    if (tx.mono)      lines.push(`  font-family: ui-monospace, monospace;`);
+    lines.push(`  color: #fff;`);
+    lines.push(`  cursor: pointer;`);
+
+    // border
+    if (fx.outline && !fx.glass) {
+        lines.push(`  border: 2px solid rgba(255,255,255,0.7);`);
+    } else if (fx.glass) {
+        lines.push(`  border: 1px solid rgba(255,255,255,0.25);`);
+    } else {
+        lines.push(`  border: none;`);
+    }
+
+    // box-shadow
+    if (cs.boxShadow && cs.boxShadow !== 'none') {
+        lines.push(`  box-shadow: ${cs.boxShadow};`);
+    }
+
+    // transitions
+    lines.push(`  transition: all 0.2s ease;`);
+
+    // notes for pseudo / animation
+    const notes = [];
+    if (fx.stripes) {
+        notes.push(
+`/* Diagonal stripes overlay */
+.my-button { position: relative; overflow: hidden; }
+.my-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255,255,255,0.18) 0 8px,
+    transparent 8px 18px
+  );
+  pointer-events: none;
+}`
+        );
+    }
+    if (fx['3D']) {
+        notes.push(
+`/* 3D press effect */
+.my-button:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 rgba(0,0,0,0.5) !important;
+}`
+        );
+    }
+    if (fx.alive) {
+        notes.push(
+`/* Alive: hue cycle + breathing */
+@keyframes alive-hue {
+  0%   { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+@keyframes alive-breathe {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.82; }
+}
+.my-button {
+  animation: alive-hue 8s linear infinite,
+             alive-breathe 4s ease-in-out infinite;
+}`
+        );
+    }
+    if (state.hover === 'raise') {
+        notes.push(
+`/* Hover: raise */
+.my-button:hover { transform: translateY(-4px); }`
+        );
+    }
+    if (state.hover === 'grow') {
+        notes.push(
+`/* Hover: grow */
+.my-button:hover { transform: scale(1.06); }`
+        );
+    }
+    if (state.hover === 'glow') {
+        notes.push(
+`/* Hover: glow */
+.my-button:hover { box-shadow: 0 0 40px currentColor, 0 0 80px currentColor; }`
+        );
+    }
+
+    let out = `.my-button {\n${lines.join('\n')}\n}`;
+    if (notes.length) out += '\n\n' + notes.join('\n\n');
+    return out;
+}
+
+function pushLog(msg) {
+    const log = document.getElementById('log');
+    const line = document.createElement('div');
+    line.className = 'log-line';
+    line.innerHTML = msg.replace(/^(> |click: )/, '<span class="k">$1</span>');
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+}
+
+/* ── INIT ───────────────────────────────────────── */
+buildColorChips();
+buildShapeChips();
+buildSizeChips();
+buildShadeChips();
+buildThemeChips();
+buildEffectChips();
+buildTextChips();
+buildHoverChips();
+buildIconChips();
+render();
+updateChipStates();
+</script>
+</body>
+</html>
