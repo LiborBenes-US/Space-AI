@@ -360,4 +360,4 @@ no liability for any issues arising from its use.
 
 • Last updated: Monday, September 21, 2026.
 
-[blueprint]:https://githubusercontent.com/LiborBenes-US/Space-AI/main/INTERFACE_2_PROTOTYPE_LOCAL.png
+[blueprint]:https://github.com/LiborBenes-US/Space-AI/blob/main/INTERFACE_2_PROTOTYPE_LOCAL.png
