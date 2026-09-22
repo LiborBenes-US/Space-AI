@@ -2,7 +2,7 @@
 
 > **Live Interactive Prototype:**
 
-> 👉 **Launch Space AI** → https://liborbenes-us.github.io/Space-AI/index.html
+> 👉 **Launch Space AI** → https://github.com/liborbenes-us/Space-AI/blob/main/space_ai.html
 
 ![Space AI Prototype Interface Local Layout][blueprint]
 
