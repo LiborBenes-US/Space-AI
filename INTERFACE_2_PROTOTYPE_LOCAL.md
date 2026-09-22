@@ -2,7 +2,7 @@
 
 > **Live Interactive Prototype:**
 
-> 👉 **Launch Space AI** → https://liborbenes-us.github.io/Space-AI/space_ai.html
+> 👉 **Launch Space AI** → https://liborbenes-us.github.io/Space-AI/index.html
 
 ![Space AI Prototype Interface Local Layout][blueprint]
 
@@ -360,4 +360,4 @@ no liability for any issues arising from its use.
 
 • Last updated: Monday, September 21, 2026.
 
-[blueprint]: [https://githubusercontent.com](https://github.com/LiborBenes-US/Space-AI/blob/main/space_ai.html)
+[blueprint]:https://githubusercontent.com/LiborBenes-US/Space-AI/main/INTERFACE_2_PROTOTYPE_LOCAL.png
