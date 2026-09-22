@@ -4,7 +4,7 @@
 
 > 👉 **Launch Space AI** → https://liborbenes-us.github.io/Space-AI/space_ai.html
 
-![Space AI Prototype Interface Layout][blueprint]
+![Space AI Prototype Interface Local Layout][blueprint]
 
 A browser-native design workspace where a **stealth micro-agent** appears on hover over a
 live UI element and lets you restyle it in real time — no code, no build step, no API key
